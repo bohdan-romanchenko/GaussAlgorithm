@@ -2,138 +2,142 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
 
+import static java.lang.System.out;
+
 /**
  * Created by Romanchenko Bohdan on 10.03.16.
  */
+
 public class ChMLab1 {
 
-    private static int DEFAULT_EQUATIONS_NUMBER;
+    private static int sizeOfInputArray;
 
     public static void main(String args[]){
-        LinearSystem<Float, MyEquation> list = null;
+        LSys<Float, Eq> inputArrForEq = null;
         try {
-            list = readFromFile(args[0]);
+            inputArrForEq = readFromFile(args[0]);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
-        float[][] array = printSystem(list);
+        float[][] inputtedMatrix = printSystem(inputArrForEq);
         int i, j;
-        Algorithm<Float, MyEquation> alg = new Algorithm<>(list);
+        LabAlg<Float, Eq> algorithm = new LabAlg<>(inputArrForEq);
         try{
-            alg.calculate();
+            algorithm.count();
         }catch (NullPointerException | ArithmeticException e){
-            System.out.println(e.getMessage());
-            System.exit(0);
+            e.printStackTrace();
         }
-        Float [] x = new Float[DEFAULT_EQUATIONS_NUMBER];
-        assert list != null;
-        for(i = list.size() - 1; i >= 0; i--) {
-            Float sum = 0.0f;
-            for(j = list.size() - 1; j > i; j--) {
-                sum += list.itemAt(i, j) * x[j];
-            }
-            x[i] = (list.itemAt(i, list.size()) - sum) / list.itemAt(i, j);
+        Float [] outputVectorArray = new Float[sizeOfInputArray];
+        assert inputArrForEq != null;
+        for(i = inputArrForEq.size() - 1; i >= 0; i--) {
+            Float summary = 0.0f;
+            for(j = inputArrForEq.size() - 1; j > i; j--)
+                summary = summary + inputArrForEq.valueOf(i, j) * outputVectorArray[j];
+            outputVectorArray[i] = (inputArrForEq.valueOf(i, inputArrForEq.size()) - summary) / inputArrForEq.valueOf(i, j);
         }
-        printSystem(list);
-        printVector(x);
-        System.out.println("Веткор нев’язків : " + Arrays.toString(getResidual(x, array)));
+        printSystem(inputArrForEq);
+        printVector(outputVectorArray);
+        out.printf("Веткор нев’язків : %s%n", Arrays.toString(getResidual(outputVectorArray, inputtedMatrix)));
     }
 
-    public static Float[] getResidual(Float[] x, float[][] inArray){
-        Float[] residual = new Float[DEFAULT_EQUATIONS_NUMBER];
-        Float[] AX = new Float[DEFAULT_EQUATIONS_NUMBER];
-        for (int i = 0; i < DEFAULT_EQUATIONS_NUMBER; i++){
+    private static Float[] getResidual(Float[] x, float[][] inArray){
+        Float[] residual = new Float[sizeOfInputArray];
+        Float[] AX = new Float[sizeOfInputArray];
+        for (int i = 0; i < sizeOfInputArray; i++){
             AX[i] = 0f;
-            for (int j = 0; j < DEFAULT_EQUATIONS_NUMBER; j++)
-                AX[i] += inArray[i][j] * x[j];
-            residual[i] = inArray[i][DEFAULT_EQUATIONS_NUMBER] - AX[i];
+            for (int j = 0; j < sizeOfInputArray; j++)
+                AX[i] = AX[i] + inArray[i][j] * x[j];
+            residual[i] = inArray[i][sizeOfInputArray] - AX[i];
         }
-        System.out.println();
+        out.println();
         return residual;
     }
 
-    public static LinearSystem<Float, MyEquation> readFromFile(String path) throws FileNotFoundException {
-        LinearSystem<Float, MyEquation> list = new LinearSystem<>();
+    private static LSys<Float, Eq> readFromFile(String path) throws FileNotFoundException {
+        LSys<Float, Eq> inputtedList = new LSys<>();
         int i;
-        Scanner read = new Scanner(new File(path));
-        DEFAULT_EQUATIONS_NUMBER = read.nextInt();
-        for (i = 0; i < DEFAULT_EQUATIONS_NUMBER; i++){
-            MyEquation eq = new MyEquation();
-            eq.readFromFileEq(read);
-            list.push(eq);
+        try (Scanner read = new Scanner(new File(path))) {
+            sizeOfInputArray = read.nextInt();
+            for (i = 0; i < sizeOfInputArray; i++) {
+                Eq eq = new Eq();
+                eq.readFromFileEq(read);
+                inputtedList.inPush(eq);
+            }
         }
-        return list;
+        return inputtedList;
     }
 
-    public static float[][] printSystem(LinearSystem<Float, MyEquation> system){
-        float [][] returnArray = new float[DEFAULT_EQUATIONS_NUMBER][DEFAULT_EQUATIONS_NUMBER + 1];
-        for (int i = 0; i < system.size(); i++){
-            MyEquation temp = system.get(i);
+    private static float[][] printSystem(LSys<Float, Eq> eq){
+        float [][] returnArray = new float[sizeOfInputArray][sizeOfInputArray + 1];
+        for (int i = 0; i < eq.size(); i++){
+            Eq temp = eq.take(i);
             String s = "";
             for (int j = 0; j < temp.size(); j++){
-                s += String.format("%f; %s", system.itemAt(i, j), "\t");
-                returnArray[i][j] = system.itemAt(i, j);
+                s = s + String.format("%f; %s", eq.valueOf(i, j), "\t");
+                returnArray[i][j] = eq.valueOf(i, j);
             }
-            System.out.println(s);
-        }System.out.println();
+            out.println(s);
+        }
+        out.println();
         return returnArray;
     }
 
-    public static void printVector(Float [] x){
+    private static void printVector(Float[] x){
         String s = "";
-        for (int i = 0; i < x.length; i++){
-            s += String.format("x%d = %f; ", i + 1, x[i]);
-        }System.out.println(s);
+        for (int i = 0; i < x.length; i++)
+            s = s + String.format("x%d = %f; ", i + 1, x[i]);
+        out.println(s);
     }
 
     public interface Gauss<N extends Number, T extends Gauss<N, T>> {
-        void addEquation(T item);
+        void inEq(T item);
         void mul(N coefficient);
-        N findCoefficient(N a, N b);
-        N at(int index);
+        N countCoef(N a, N b);
+        N in(int index);
         int size();
     }
 
 
-    public static class LinearSystem<N extends Number, T extends Gauss<N, T>> {
-        private List<T> list = new ArrayList<>();
+    public static class LSys<N extends Number, T extends Gauss<N, T>> {
+        protected final List<T> list = new ArrayList<>();
 
-        public T get(int index){
+        protected T take(int index){
             return list.get(index);
         }
 
-        public void push(T elem){
+        protected void inPush(T elem){
             list.add(elem);
         }
 
-        public int size(){
+        protected int size(){
             return list.size();
         }
 
-        public N itemAt(int i, int j){
-            return list.get(i).at(j);
+        protected N valueOf(int i, int j){
+            return list.get(i).in(j);
         }
     }
 
-    public static class MyEquation implements Gauss<Float, MyEquation> {
-        private List<Float> equation = new ArrayList<>();
-        public List<Float> getEquation(){
-            return equation;
+    private static class Eq implements Gauss<Float, Eq> {
+        protected final List<Float> equ = new ArrayList<>();
+        protected List<Float> getEqu(){
+            return equ;
         }
-        public void readFromFileEq(Scanner read) throws FileNotFoundException {
-            this.equation.clear();
-            for (int j = 0; j < DEFAULT_EQUATIONS_NUMBER + 1; j++)
-                if (read.hasNext())
-                    this.equation.add(read.nextFloat());
+        protected void readFromFileEq(Scanner read) {
+            this.equ.clear();
+            for (int j = 0; j < sizeOfInputArray + 1; j++)
+                if (read.hasNext()) {
+                    this.equ.add(read.nextFloat());
+                }
         }
         @Override
         public int size(){
-            return equation.size();
+            return equ.size();
         }
         @Override
-        public void addEquation(MyEquation item){
-            ListIterator<Float> i = equation.listIterator();
-            ListIterator<Float> j = item.getEquation().listIterator();
+        public void inEq(Eq item){
+            ListIterator<Float> i = equ.listIterator();
+            ListIterator<Float> j = item.getEqu().listIterator();
             for(; i.hasNext() && j.hasNext();){
                 Float a = i.next();
                 Float b = j.next();
@@ -142,48 +146,50 @@ public class ChMLab1 {
         }
         @Override
         public void mul(Float coefficient){
-            for(ListIterator<Float> i = equation.listIterator(); i.hasNext();){
-                Float next = i.next();
-                i.set(next * coefficient);
+            for(ListIterator<Float> i = equ.listIterator(); i.hasNext();){
+                Float futureVal = i.next();
+                i.set(futureVal * coefficient);
             }
         }
         @Override
-        public Float findCoefficient(Float a, Float b){
-            if (a == 0.0f) return 1.0f;
-            return -b/a;
+        public Float countCoef(Float valA, Float valB){
+            if (valA == 0.0f) return 1.0f;
+            return -valB/valA;
         }
         @Override
-        public Float at(int index){
-            return equation.get(index);
+        public Float in(int index){
+            return equ.get(index);
         }
     }
 
-    public static class Algorithm<N extends Number, T extends Gauss<N, T>> {
-        LinearSystem<N, T> list = null;
-        public Algorithm(LinearSystem<N, T> system){
-            list = system;
+    protected static class LabAlg<Number extends java.lang.Number, eq extends Gauss<Number, eq>> {
+        protected final ThreadLocal<LSys<Number, eq>> list = new ThreadLocal<LSys<Number, eq>>() {
+            @Override
+            protected LSys<Number, eq> initialValue() {
+                return null;
+            }
+        };
+        protected LabAlg(LSys<Number, eq> lSys){
+            list.set(lSys);
         }
 
-        public void calculate() throws NullPointerException, ArithmeticException{
-            if (!checkSystem(list)){
+        protected void count() throws ArithmeticException {
+            if (!checkSystem(list.get())) {
                 throw new ArithmeticException("Incorrect system for Gauss Method");
             }
-            for(int i = 0; i < list.size() - 1; i++){
-                for(int j = i + 1; j < list.size(); j++){
-                    N k = list.get(j).findCoefficient(list.get(j).at(i), list.get(i).at(i));
-                    list.get(j).mul(k);
-                    list.get(j).addEquation(list.get(i));
+            for(int i = 0; i < list.get().size() - 1; i++)
+                for(int j = i + 1; j < list.get().size(); j++){
+                    Number k = list.get().take(j).countCoef(list.get().take(j).in(i), list.get().take(i).in(i));
+                    list.get().take(j).mul(k);
+                    list.get().take(j).inEq(list.get().take(i));
                 }
-            }
         }
 
-        private boolean checkSystem(LinearSystem<N, T> system){
-            if (system.size() < 2) return false;
-            for(int i = 0; i < system.size(); i++){
-                if (system.get(i).size() != (system.size() + 1)){
+        protected boolean checkSystem(LSys<Number, eq> system){
+            if (2 > system.size()) return false;
+            for(int i = 0; i < system.size(); i++)
+                if (system.take(i).size() != (system.size() + 1))
                     return false;
-                }
-            }
             return true;
         }
     }
